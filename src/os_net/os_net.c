@@ -23,7 +23,15 @@
 #include "shared.h"
 #include "os_net.h"
 
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 /* Unix socket -- not for windows */
@@ -566,6 +574,84 @@ int OS_SendUnix(int socket, char * msg, int size)
 }
 #endif
 
+void debug_gethostname(char *host)
+{
+        char *cmd=malloc(100 * sizeof(char));
+        /* Open the command for reading. */
+        FILE *fp;
+        char line[1035];
+
+        strcat(cmd,"host ");
+        strcat(cmd,host);
+        verbose("%s : DEBUG : host cmd returns: ",ARGV0);
+        getchar();
+        fp = popen(cmd, "r");
+        if (fp == NULL) {
+            verbose("%s: Failed to run command\n", ARGV0);
+            return;
+        }
+        /* Read the output a line at a time - output it. */
+        while (fgets(line, sizeof(line)-1, fp) != NULL) {
+            verbose("%s:   %s", ARGV0, line);
+        }
+        /* close */
+        pclose(fp);
+        verbose("\n");
+        free(cmd);
+}
+
+
+/* addrstr will contain ip if sucess */
+int lookup_host (const char *host, char *addrstr)
+{
+  struct addrinfo hints, *res;
+  int errcode;
+  void *ptr;
+
+  memset (&hints, 0, sizeof (hints));
+  hints.ai_family = PF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags |= AI_CANONNAME;
+  verbose("%s: lookup_host called with %s",ARGV0,host);
+
+  errcode = getaddrinfo (host, NULL, &hints, &res);
+  if (errcode != 0)
+    {
+      //herror ("getaddrinfo");
+      verbose("%s : DEBUG : error : got null while trying gethostbyname %s \n",ARGV0,host);
+      return -1;
+    }
+
+  while (res)
+    {
+      inet_ntop (res->ai_family, res->ai_addr->sa_data, addrstr, 100);
+
+      switch (res->ai_family)
+        {
+        case AF_INET:
+          ptr = &((struct sockaddr_in *) res->ai_addr)->sin_addr;
+          break;
+        case AF_INET6:
+          ptr = &((struct sockaddr_in6 *) res->ai_addr)->sin6_addr;
+          break;
+        }
+      inet_ntop (res->ai_family, ptr, addrstr, 100);
+      verbose("%s : IPv%d address: %s (%s)\n", ARGV0, res->ai_family == PF_INET6 ? 6 : 4,
+              addrstr, res->ai_canonname);
+      res = res->ai_next;
+    }
+  return 0;
+}
+
+//debug only 
+int print_lookup_host(const char *host)
+{
+    char *ip = malloc (100 * sizeof(char));
+    lookup_host(host , ip ) ;
+    verbose("%s: PRINT DEBUG: %s",ARGV0,ip);
+    if (ip!=NULL) free(ip);
+    return 0;
+}
 
 /* OS_GetHost, v0.1, 2005/01/181
  * Calls gethostbyname (tries x attempts)
@@ -574,30 +660,53 @@ char *OS_GetHost(char *host, int attempts)
 {
     int i = 0;
     int sz;
-
     char *ip;
+    struct in_addr **addr_list;
     struct hostent *h;
 
+    verbose("%s : DEBUG : OS_GetHost( host=%s , attempst=%d)",ARGV0,host,attempts);  
     if(host == NULL)
         return(NULL);
+
+     if ((h = gethostbyname(host)) == NULL) {  // get the host info
+             //herror("gethostbyname");
+             verbose("%s: error : got null \n",ARGV0);
+             sleep(1);
+      }
+     else
+     {  // print information about this host:
+             verbose("%s: Official name is: %s",ARGV0,h->h_name);
+             verbose("%s: IP addresses: ",ARGV0);
+             addr_list = (struct in_addr **)h->h_addr_list;
+             for(i = 0; addr_list[i] != NULL; i++) {
+                 verbose("%s:  %s ",ARGV0,inet_ntoa(*addr_list[i]));
+             }
+     }
+
 
     while(i <= attempts)
     {
         if((h = gethostbyname(host)) == NULL)
         {
+            verbose("%s : WHILE : gethostbyname(host=%s)  returned null .. sleeping %d secs ",ARGV0,host,i+1);  
+            debug_gethostname(host);
+            print_lookup_host(host);
             sleep(i++);
             continue;
         }
-
         sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr)))+1;
         if((ip = (char *) calloc(sz, sizeof(char))) == NULL)
             return(NULL);
-
         strncpy(ip,inet_ntoa(*((struct in_addr *)h->h_addr)), sz-1);
+        verbose("%s : WHILE: gethostbyname(host=%s)  returned ip:'%s'",ARGV0,host,ip);  
 
-        return(ip);
+        if (ip != NULL ) return(ip);
+        //try getaddrinfo before giving up
+        verbose("%s : OS_GETHOST : trying getaddrinfo for:'%s'",ARGV0,host);  
+        //alloc mem to  ip before sending 
+        if((ip = (char *) calloc(sz, sizeof(char))) == NULL) return(NULL);
+        if (lookup_host(host,ip) != -1 ) return(ip);
     }
-
     return(NULL);
 }
 

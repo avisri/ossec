@@ -45,11 +45,13 @@ int connect_server(int initial_id)
 
         /* Check if we have a hostname */
         tmp_str = strchr(agt->rip[rc], '/');
+        verbose("%s: INFO:  '%s' is the previous result  for hostname/ip '%s' ",ARGV0,tmp_str,agt->rip[rc]);
+
         if (tmp_str) {
             char *f_ip;
             *tmp_str = '\0';
-
             f_ip = OS_GetHost(agt->rip[rc], 5);
+            verbose("%s: INFO: got '%s' as ip for hostname request '%s' ",ARGV0,f_ip,agt->rip[rc]);
             if (f_ip) {
                 char ip_str[128];
                 ip_str[127] = '\0';
@@ -96,7 +98,7 @@ int connect_server(int initial_id)
             rc++;
 
             if (agt->rip[rc] == NULL) {
-                attempts += 10;
+                attempts += 1;
 
                 /* Only log that if we have more than 1 server configured */
                 if (agt->rip[1]) {
@@ -154,7 +156,7 @@ void start_agent(int is_startup)
         send_msg(0, msg);
         attempts = 0;
 
-        /* Read until our reply comes back */
+        /* Read until our reply comes back and abadon after attempting for 5 times */
         while (((recv_b = recv(agt->sock, buffer, OS_MAXSTR,
                                MSG_DONTWAIT)) >= 0) || (attempts <= 5)) {
             if (recv_b <= 0) {
@@ -169,12 +171,6 @@ void start_agent(int is_startup)
                 if (attempts >= 3) {
                     send_msg(0, msg);
                 }
-                /*if sending failes for a long time say 30 secs the  reattempt with a dns lookup */
-                /* ideally we should get a signal for address/network/dns changes and handle it */
-                if(attempts >= 30 )
-                {
-                }
-
                 continue;
             }
 
@@ -225,11 +221,11 @@ void start_agent(int is_startup)
                 g_attempts += (attempts * 3);
             } else {
                 g_attempts += 5;
-                verbose("%s : INFO: will sleep for %d secs .... ",ARGV0,g_attempts); 
+                verbose("%s : INFO: will sleep for %d secs .... server: '%s'",ARGV0,g_attempts,agt->rip[0]); 
                 sleep(g_attempts);
             }
         } else {
-            verbose("%s : INFO: will sleep for %d secs .... ",ARGV0,g_attempts); 
+            verbose("%s : INFO: will sleep for %d secs .... server: '%s' ",ARGV0,g_attempts,agt->rip[0]); 
             sleep(g_attempts);
             g_attempts += (attempts * 3);
 

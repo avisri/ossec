@@ -44,7 +44,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     if (!run_foreground)
     {
        nowDaemon();
-       goDaemon();
+       goDaemonLight();
     }
 
 
