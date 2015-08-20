@@ -583,7 +583,7 @@ void debug_gethostname(char *host)
 
         strcat(cmd,"host ");
         strcat(cmd,host);
-        verbose("%s : DEBUG : host cmd returns: ",ARGV0);
+        debug1("%s : DEBUG : host cmd returns: ",ARGV0);
         getchar();
         fp = popen(cmd, "r");
         if (fp == NULL) {
@@ -618,7 +618,7 @@ int lookup_host (const char *host, char *addrstr)
   if (errcode != 0)
     {
       //herror ("getaddrinfo");
-      verbose("%s : DEBUG : error : got null while trying gethostbyname %s \n",ARGV0,host);
+      debug1("%s : DEBUG : error : got null while trying gethostbyname %s \n",ARGV0,host);
       return -1;
     }
 
@@ -648,7 +648,7 @@ int print_lookup_host(const char *host)
 {
     char *ip = malloc (100 * sizeof(char));
     lookup_host(host , ip ) ;
-    verbose("%s: PRINT DEBUG: %s",ARGV0,ip);
+    debug1("%s: PRINT DEBUG: %s",ARGV0,ip);
     if (ip!=NULL) free(ip);
     return 0;
 }
@@ -664,7 +664,7 @@ char *OS_GetHost(char *host, int attempts)
     struct in_addr **addr_list;
     struct hostent *h;
 
-    verbose("%s : DEBUG : OS_GetHost( host=%s , attempst=%d)",ARGV0,host,attempts);  
+   debug1("%s : DEBUG : OS_GetHost( host=%s , attempst=%d)",ARGV0,host,attempts);  
     if(host == NULL)
         return(NULL);
 
