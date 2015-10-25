@@ -69,6 +69,12 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o
     elif [ -e /usr/include/openssl/conf.h ]; then
         echo "DEXTRA=-DUSE_OPENSSL" >> Config.OS
         echo "OPENSSLCMD=-lssl -lcrypto" >> Config.OS
+    elif [ -e /usr/local/opt/openssl/include/openssl/opensslconf.h ]; then
+        echo "DEXTRA=-DUSE_OPENSSL -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include" >> Config.OS
+        echo "OPENSSLCMD=-lssl -lcrypto" >> Config.OS
+    elif [ -e /usr/local/opt/openssl/include/openssl/conf.h ]; then
+        echo "DEXTRA=-DUSE_OPENSSL -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include" >> Config.OS
+        echo "OPENSSLCMD=-lssl -lcrypto" >> Config.OS
     fi    
 
     # Checking for inotify
