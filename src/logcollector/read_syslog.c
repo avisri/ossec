@@ -15,6 +15,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "trueip/trueip.h"
 
 
 
@@ -88,6 +89,14 @@ void *read_syslog(int pos, int *rc, int drop_it)
         /* Sending message to queue */
         if(drop_it == 0)
         {
+            /*trueip plugin integration */
+            char *trueipstr = inject_trueip(str);
+            strncpy(str, trueipstr, sizeof str - 1);
+            str[sizeof str - 1]='\0';
+            free(trueipstr);
+            //printf("\nPOLARDEBUG: %s\n", str);
+            /*trueip plugin integration */
+
             if(SendMSG(logr_queue,str,logff[pos].file,
                         LOCALFILE_MQ) < 0)
             {
